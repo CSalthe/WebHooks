@@ -1,0 +1,35 @@
+<main>
+  <header><div class="brand"><span class="logo">↗</span> WEBHOOK LAB</div><span class="pill">LOCAL PLAYGROUND</span></header>
+  <section class="intro"><p class="eyebrow">LEARN BY SENDING</p><h1>One event.<br>A little chain reaction.</h1><p>Send an event, inspect the HTTP delivery, and watch a Java handler respond.</p></section>
+  <div class="flow"><span><b>01</b> Create an event</span><span>→</span><span><b>02</b> HTTP POST + signature</span><span>→</span><span><b>03</b> Verify & handle</span></div>
+  <div class="grid">
+    <section class="card"><div class="section-title"><h2>Send an event</h2><span class="tag">PRODUCER</span></div>
+      <fieldset [disabled]="busy()">
+      <label for="type">Webhook example</label><select id="type" [(ngModel)]="type" (ngModelChange)="example()">@for (t of types; track t) {<option [value]="t">{{ t }}</option>}</select>
+      <div class="label-row"><label for="id">Event ID</label><button class="text-button" (click)="newId()">New ID ↻</button></div><input id="id" [(ngModel)]="id" maxlength="100">
+      <p class="hint">Send the same ID and payload twice to see duplicate protection.</p>
+      <label for="payload">Event data <span class="muted">JSON</span></label><textarea id="payload" [(ngModel)]="payload" spellcheck="false" rows="9"></textarea>
+      <div class="options"><label><input type="checkbox" [(ngModel)]="invalidSignature"> Send an invalid signature <small>Receiver rejects with 401</small></label><label><input type="checkbox" [(ngModel)]="failFirst"> Fail the first attempt <small>Receiver returns 503 once per new ID</small></label><label><input type="checkbox" [(ngModel)]="autoRetry"> Automatically retry server errors <small>Up to 3 attempts with a short backoff</small></label></div>
+      <button class="primary" (click)="send()">{{ busy() ? 'Delivering…' : 'Send webhook →' }}</button>
+      </fieldset>
+      @if (error()) {<p class="error" role="alert">{{ error() }}</p>}
+    </section>
+    <section class="card"><div class="section-title"><h2>Delivery inspector</h2><span class="tag">HTTP</span></div>
+      <div aria-live="polite">@if (delivery(); as d) {
+        <p class="endpoint">POST {{ d.url }}</p>
+        @for (attempt of d.attempts; track attempt.number) {<div class="attempt"><div class="label-row"><strong>Attempt {{ attempt.number }}</strong><span class="status" [class.bad]="attempt.httpStatus >= 400">HTTP {{ attempt.httpStatus }}</span></div><pre>{{ attempt.response }}</pre></div>}
+        <details><summary>Request headers & exact body</summary><p class="hint">The signature covers timestamp + "." + the exact JSON body.</p><pre>X-Webhook-Timestamp: {{ d.timestamp }}
+X-Webhook-Signature: {{ d.signature }}
+
+{{ d.body }}</pre></details>
+      } @else {<div class="empty"><span>↗</span><h3>Your first delivery starts here</h3><p>Choose an example and send it.<br>Each HTTP response will appear here.</p></div>}
+      </div>
+      <aside><strong>What makes it a webhook?</strong><p>The producer pushes an HTTP request when something happens. The receiver verifies it, chooses a handler, and acknowledges the event.</p><p>Here, both roles live in one Java app so you can inspect the whole journey.</p></aside>
+    </section>
+  </div>
+  <section class="card history"><div class="section-title"><div><h2>Received events <span class="count">{{ receipts().length }}</span></h2><p class="hint">Successfully handled events. Duplicate deliveries don’t add another row.</p></div><button class="secondary" (click)="refresh()">Refresh ↻</button></div>
+  @if (historyError()) {<p class="error" role="alert">{{ historyError() }}</p>}
+  @for (receipt of receipts(); track receipt.event.id) {<article class="receipt"><div><span class="event-type">{{ receipt.event.type }}</span><time>{{ receipt.receivedAt | date:'mediumTime' }}</time></div><p>{{ receipt.message }}</p><details><summary>{{ receipt.event.id }}</summary><pre>{{ receipt.event.data | json }}</pre></details></article>} @empty {<p class="muted">No events yet. Send your first webhook above.</p>}
+  </section>
+  <footer>Built for experimentation · In-memory history · Restart the backend for a clean slate</footer>
+</main>
